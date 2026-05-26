@@ -1,0 +1,39 @@
+{
+  "name": "fangke",
+  "version": "0.1.0",
+  "description": "校园访客管理系统",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "tsx watch src/backend/app.ts",
+    "dev:frontend": "vite",
+    "build": "tsc && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "sql.js": "^1.10.2",
+    "multer": "^1.4.5-lts.1",
+    "cors": "^2.8.5",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.11",
+    "@types/cors": "^2.8.17",
+    "@types/uuid": "^9.0.7",
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.21.3",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0",
+    "vite": "^5.0.12",
+    "@vitejs/plugin-react": "^4.2.1",
+    "vitest": "^1.2.1",
+    "concurrently": "^8.2.2"
+  }
+}
