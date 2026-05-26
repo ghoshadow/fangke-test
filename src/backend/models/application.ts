@@ -45,11 +45,11 @@ export const ApplicationModel = {
     db.run(
       `INSERT INTO visitor_application (${ALL_COLUMNS}) VALUES (?,?,?,?,?,?,?, ?,?,?,?,?, ?,?,?, ?,?,?,?)`,
       [
-        id, input.visitor_name, input.phone, input.id_card, input.company,
-        input.visitor_count, input.is_driving ? 1 : 0, input.license_plate,
+        id, input.visitor_name, input.phone, input.id_card ?? null, input.company ?? null,
+        input.visitor_count, input.is_driving ? 1 : 0, input.license_plate ?? null,
         input.contact_person, input.department_id,
         input.visit_start_time, input.visit_end_time, input.visit_purpose,
-        input.attachment_url, 'pending', null,
+        input.attachment_url ?? null, 'pending', null,
         input.session_id, timestamp, timestamp,
       ]
     );

@@ -6,6 +6,21 @@ import type { ApiResponse } from '@shared/types';
 
 const BASE_URL = '/api';
 const TIMEOUT_MS = 15_000;
+const SESSION_STORAGE_KEY = 'fangke_session_id';
+
+// ---------- Session ID 管理 ----------
+
+function getSessionId(): string {
+  if (typeof window === 'undefined') return 'anonymous';
+  let sid = sessionStorage.getItem(SESSION_STORAGE_KEY);
+  if (!sid) {
+    sid = `s_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    sessionStorage.setItem(SESSION_STORAGE_KEY, sid);
+  }
+  return sid;
+}
+
+export { getSessionId };
 
 // ---------- 请求选项 ----------
 
@@ -82,6 +97,7 @@ export async function request<T = unknown>(
 
   const fetchHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
+    'X-Session-Id': getSessionId(),
     ...headers,
   };
 

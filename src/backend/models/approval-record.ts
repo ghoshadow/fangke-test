@@ -20,11 +20,12 @@ export const ApprovalRecordModel = {
   create(input: CreateApprovalRecordInput): ApprovalRecord {
     const db = getDatabase();
     const id = generateId();
+    const reason = input.reason ?? null;
     db.run(
       `INSERT INTO approval_record (${ALL_COLUMNS}) VALUES (?,?,?,?,?,?)`,
-      [id, input.application_id, input.operation_type, input.reason, input.operator_session_id, input.operated_at]
+      [id, input.application_id, input.operation_type, reason, input.operator_session_id, input.operated_at]
     );
-    return { id, ...input };
+    return { id, application_id: input.application_id, operation_type: input.operation_type, reason, operator_session_id: input.operator_session_id, operated_at: input.operated_at };
   },
 
   /** 按申请 ID 查询审批记录 */
