@@ -56,9 +56,10 @@ export const DraftModel = {
     }
 
     const id = generateId();
+    const applicationId = input.application_id ?? null;
     db.run(
       `INSERT INTO draft (${ALL_COLUMNS}) VALUES (?,?,?,?,?)`,
-      [id, input.session_id, input.application_id, input.form_data, timestamp]
+      [id, input.session_id, applicationId, input.form_data, timestamp]
     );
     return this.findById(id)!;
   },
