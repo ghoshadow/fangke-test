@@ -29,6 +29,7 @@ export const ApprovalStatus = {
 } as const;
 
 export type ApprovalStatusType = (typeof ApprovalStatus)[keyof typeof ApprovalStatus];
+export type ApprovalStatus = ApprovalStatusType;
 
 export const PassStatus = {
   NOT_VISITED: 'not_visited',
@@ -36,6 +37,7 @@ export const PassStatus = {
 } as const;
 
 export type PassStatusType = (typeof PassStatus)[keyof typeof PassStatus];
+export type PassStatus = PassStatusType;
 
 export const ApprovalAction = {
   APPROVE: 'approve',
@@ -44,6 +46,8 @@ export const ApprovalAction = {
 } as const;
 
 export type ApprovalActionType = (typeof ApprovalAction)[keyof typeof ApprovalAction];
+
+export type OperationType = ApprovalActionType;
 
 // ---------- 审批状态显示文本 ----------
 
@@ -63,24 +67,63 @@ export const PassStatusLabels: Record<PassStatusType, string> = {
 
 export interface VisitorApplication {
   id: string;
-  session_id: string;
   visitor_name: string;
   phone: string;
-  id_card?: string;
-  visitor_unit?: string;
+  id_card: string | null;
+  company: string | null;
   visitor_count: number;
-  has_vehicle: boolean;
-  vehicle_plate?: string;
+  is_driving: boolean;
+  license_plate: string | null;
   contact_person: string;
-  department: string;
-  visit_start: string;
-  visit_end: string;
+  department_id: string;
+  visit_start_time: string;
+  visit_end_time: string;
   visit_purpose: string;
-  attachment_url?: string;
+  attachment_url: string | null;
   approval_status: ApprovalStatusType;
-  pass_status?: PassStatusType;
+  pass_status: PassStatusType | null;
+  session_id: string;
   created_at: string;
   updated_at: string;
+}
+
+/** 创建申请的输入（不含 id、状态、时间戳等服务端字段） */
+export type CreateApplicationInput = Omit<
+  VisitorApplication,
+  'id' | 'approval_status' | 'pass_status' | 'created_at' | 'updated_at'
+>;
+
+/** 申请列表查询参数 */
+export interface ApplicationQuery {
+  session_id?: string;
+  approval_status?: ApprovalStatusType;
+  phone?: string;
+  page?: number;
+  page_size?: number;
+}
+
+/** 记录多维度查询参数 */
+export interface RecordQuery {
+  visitor_name?: string;
+  phone?: string;
+  department_id?: string;
+  approval_status?: ApprovalStatusType;
+  pass_status?: PassStatusType;
+  visit_start_from?: string;
+  visit_start_to?: string;
+  created_from?: string;
+  created_to?: string;
+  contact_person?: string;
+  page?: number;
+  page_size?: number;
+}
+
+/** 通用分页结果 */
+export interface PaginationResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
 // ---------- 审批记录 ----------
@@ -88,21 +131,26 @@ export interface VisitorApplication {
 export interface ApprovalRecord {
   id: string;
   application_id: string;
-  action: ApprovalActionType;
-  reason?: string;
+  operation_type: OperationType;
+  reason: string | null;
   operator_session_id: string;
-  created_at: string;
+  operated_at: string;
 }
+
+export type CreateApprovalRecordInput = Omit<ApprovalRecord, 'id'>;
 
 // ---------- 通行证 ----------
 
 export interface VisitorPass {
   id: string;
   application_id: string;
-  pass_code: string;
   pass_status: PassStatusType;
-  confirmed_at?: string;
+  actual_visit_time: string | null;
   created_at: string;
+}
+
+export interface CreateVisitorPassInput {
+  application_id: string;
 }
 
 // ---------- 部门 ----------
@@ -110,6 +158,7 @@ export interface VisitorPass {
 export interface Department {
   id: string;
   name: string;
+  sort_order: number;
 }
 
 // ---------- 草稿 ----------
@@ -117,9 +166,15 @@ export interface Department {
 export interface Draft {
   id: string;
   session_id: string;
-  data: Partial<VisitorApplication>;
-  created_at: string;
-  updated_at: string;
+  application_id: string | null;
+  form_data: string;
+  saved_at: string;
+}
+
+export interface CreateDraftInput {
+  session_id: string;
+  application_id: string | null;
+  form_data: string;
 }
 
 // ---------- 表单校验错误 ----------
