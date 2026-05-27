@@ -18,8 +18,11 @@ router.get('/', (req: Request, res: Response) => {
   const result = ApplicationModel.recordQuery({
     visitor_name: name as string | undefined,
     phone: phone as string | undefined,
+    id_card: id_card as string | undefined,
     contact_person: contact_person as string | undefined,
     department_id: department as string | undefined,
+    company: company as string | undefined,
+    license_plate: license_plate as string | undefined,
     approval_status: approval_status as ApprovalStatusType | undefined,
     pass_status: pass_status as PassStatusType | undefined,
     visit_start_from: date_from as string | undefined,

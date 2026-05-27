@@ -106,6 +106,7 @@ export interface ApplicationQuery {
 export interface RecordQuery {
   visitor_name?: string;
   phone?: string;
+  id_card?: string;
   department_id?: string;
   approval_status?: ApprovalStatusType;
   pass_status?: PassStatusType;
@@ -114,6 +115,8 @@ export interface RecordQuery {
   created_from?: string;
   created_to?: string;
   contact_person?: string;
+  company?: string;
+  license_plate?: string;
   page?: number;
   page_size?: number;
 }

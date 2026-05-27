@@ -99,6 +99,7 @@ export const ApplicationModel = {
 
     if (q.visitor_name) { conditions.push('visitor_name LIKE ?'); params.push(`%${q.visitor_name}%`); }
     if (q.phone) { conditions.push('phone = ?'); params.push(q.phone); }
+    if (q.id_card) { conditions.push('id_card = ?'); params.push(q.id_card); }
     if (q.department_id) { conditions.push('department_id = ?'); params.push(q.department_id); }
     if (q.approval_status) { conditions.push('approval_status = ?'); params.push(q.approval_status); }
     if (q.pass_status) { conditions.push('pass_status = ?'); params.push(q.pass_status); }
@@ -107,6 +108,8 @@ export const ApplicationModel = {
     if (q.created_from) { conditions.push('created_at >= ?'); params.push(q.created_from); }
     if (q.created_to) { conditions.push('created_at <= ?'); params.push(q.created_to); }
     if (q.contact_person) { conditions.push('contact_person LIKE ?'); params.push(`%${q.contact_person}%`); }
+    if (q.company) { conditions.push('company LIKE ?'); params.push(`%${q.company}%`); }
+    if (q.license_plate) { conditions.push('license_plate LIKE ?'); params.push(`%${q.license_plate}%`); }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const page = q.page || 1;

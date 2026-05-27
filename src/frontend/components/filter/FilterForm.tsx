@@ -7,7 +7,7 @@ import React from 'react';
 interface FilterField {
   key: string;
   label: string;
-  type: 'text' | 'select' | 'date';
+  type: 'text' | 'select' | 'date' | 'daterange';
   placeholder?: string;
   options?: { label: string; value: string }[];
 }
@@ -53,6 +53,24 @@ const FilterForm: React.FC<FilterFormProps> = ({
                   </option>
                 ))}
               </select>
+            ) : field.type === 'daterange' ? (
+              <div className="filter-daterange">
+                <input
+                  type="date"
+                  className="form-input filter-input"
+                  value={values[`${field.key}_from`] || ''}
+                  onChange={(e) => onChange(`${field.key}_from`, e.target.value)}
+                  placeholder="起始"
+                />
+                <span className="filter-daterange-sep">~</span>
+                <input
+                  type="date"
+                  className="form-input filter-input"
+                  value={values[`${field.key}_to`] || ''}
+                  onChange={(e) => onChange(`${field.key}_to`, e.target.value)}
+                  placeholder="结束"
+                />
+              </div>
             ) : (
               <input
                 type={field.type}
