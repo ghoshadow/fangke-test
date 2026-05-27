@@ -12,28 +12,39 @@ router.get('/', (req: Request, res: Response) => {
   const pageNum = page ? Number(page) : 1;
   const pageSizeNum = page_size ? Number(page_size) : 20;
 
-  // 如果有搜索关键词，使用搜索方法（已 JOIN application 表）
+  // 如果有搜索关键词，使用多字段搜索（AND 逻辑，仅已审批通过的通行证）
   if (name || phone || id_card) {
-    const keyword = (name as string) || (phone as string) || (id_card as string) || '';
-    const result = VisitorPassModel.search(keyword, pageNum, pageSizeNum);
+    const result = VisitorPassModel.search(
+      {
+        name: name as string | undefined,
+        phone: phone as string | undefined,
+        id_card: id_card as string | undefined,
+      },
+      pageNum,
+      pageSizeNum,
+    );
     return paginated(res, result);
   }
 
-  // 否则返回全量分页（JOIN application 表获取访客信息）
+  // 否则返回全量分页（JOIN application 表获取访客信息，仅已审批通过的通行证）
   const db = getDatabase();
   const offset = (pageNum - 1) * pageSizeNum;
 
-  const countResult = db.exec('SELECT COUNT(*) FROM visitor_pass');
+  const countResult = db.exec(
+    'SELECT COUNT(*) FROM visitor_pass vp JOIN visitor_application va ON vp.application_id = va.id WHERE va.approval_status = ?',
+    ['approved'],
+  );
   const total = (countResult[0]?.values[0]?.[0] as number) || 0;
 
   const sql = `SELECT vp.id, vp.application_id, vp.pass_status, vp.actual_visit_time, vp.created_at,
-              va.visitor_name, va.phone, va.visit_start_time, va.visit_end_time
+              va.visitor_name, va.phone, va.id_card, va.visit_start_time, va.visit_end_time
        FROM visitor_pass vp
        JOIN visitor_application va ON vp.application_id = va.id
+       WHERE va.approval_status = ?
        ORDER BY vp.created_at DESC
        LIMIT ? OFFSET ?`;
 
-  const result = db.exec(sql, [pageSizeNum, offset]);
+  const result = db.exec(sql, ['approved', pageSizeNum, offset]);
   const items = result.length
     ? result[0].values.map((row: unknown[]) => {
         const r = row as (string | null)[];
@@ -45,8 +56,9 @@ router.get('/', (req: Request, res: Response) => {
           created_at: r[4] as string,
           visitor_name: r[5] as string,
           phone: r[6] as string,
-          visit_start_time: r[7] as string,
-          visit_end_time: r[8] as string,
+          id_card: r[7] as string | null,
+          visit_start_time: r[8] as string,
+          visit_end_time: r[9] as string,
         };
       })
     : [];

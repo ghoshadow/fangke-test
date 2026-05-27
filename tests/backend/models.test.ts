@@ -254,6 +254,7 @@ describe('Backend Models', () => {
         visit_purpose: '测试通行证',
         session_id: 'test-session-pass-model',
       });
+      ApplicationModel.updateApprovalStatus(app.id, 'approved', app.version);
       testAppId = app.id;
     });
 
@@ -292,7 +293,7 @@ describe('Backend Models', () => {
     });
 
     it('search by keyword', () => {
-      const result = VisitorPassModel.search('通行证测试');
+      const result = VisitorPassModel.search({ name: '通行证测试' });
       expect(result.items.length).toBeGreaterThanOrEqual(1);
       expect(result.items[0].visitor_name).toBe('通行证测试');
     });

@@ -89,39 +89,54 @@ export const VisitorPassModel = {
     );
   },
 
-  /** 按关键词搜索通行证（关联申请表获取访客信息） */
-  search(keyword: string, page = 1, pageSize = 20): {
-    items: (VisitorPass & { visitor_name: string; phone: string })[];
+  /** 多字段搜索通行证（AND 逻辑，仅审批通过的记录） */
+  search(params: { name?: string; phone?: string; id_card?: string }, page = 1, pageSize = 20): {
+    items: (VisitorPass & { visitor_name: string; phone: string; id_card: string | null })[];
     total: number;
     page: number;
     page_size: number;
   } {
     const db = getDatabase();
     const offset = (page - 1) * pageSize;
-    const likeKeyword = `%${keyword}%`;
+    const conditions: string[] = ['va.approval_status = ?'];
+    const queryParams: (string | number)[] = ['approved'];
+
+    if (params.name) {
+      conditions.push('va.visitor_name LIKE ?');
+      queryParams.push(`%${params.name}%`);
+    }
+    if (params.phone) {
+      conditions.push('va.phone LIKE ?');
+      queryParams.push(`${params.phone}%`);
+    }
+    if (params.id_card) {
+      conditions.push('va.id_card = ?');
+      queryParams.push(params.id_card);
+    }
+
+    const where = `WHERE ${conditions.join(' AND ')}`;
+
+    const countResult = db.exec(
+      `SELECT COUNT(*) FROM visitor_pass vp JOIN visitor_application va ON vp.application_id = va.id ${where}`,
+      queryParams
+    );
+    const total = (countResult[0]?.values[0]?.[0] as number) || 0;
 
     const sql = `
       SELECT vp.id, vp.application_id, vp.pass_status, vp.actual_visit_time, vp.created_at,
-             va.visitor_name, va.phone
+             va.visitor_name, va.phone, va.id_card
       FROM visitor_pass vp
       JOIN visitor_application va ON vp.application_id = va.id
-      WHERE va.visitor_name LIKE ? OR va.phone LIKE ?
+      ${where}
       ORDER BY vp.created_at DESC
       LIMIT ? OFFSET ?
     `;
 
-    const countResult = db.exec(
-      `SELECT COUNT(*) FROM visitor_pass vp JOIN visitor_application va ON vp.application_id = va.id
-       WHERE va.visitor_name LIKE ? OR va.phone LIKE ?`,
-      [likeKeyword, likeKeyword]
-    );
-    const total = (countResult[0]?.values[0]?.[0] as number) || 0;
-
-    const result = db.exec(sql, [likeKeyword, likeKeyword, pageSize, offset]);
+    const result = db.exec(sql, [...queryParams, pageSize, offset]);
     const items = result.length
       ? result[0].values.map((row: unknown[]) => {
           const pass = rowToVisitorPass(row);
-          return { ...pass, visitor_name: row[5] as string, phone: row[6] as string };
+          return { ...pass, visitor_name: row[5] as string, phone: row[6] as string, id_card: row[7] as string | null };
         })
       : [];
 
