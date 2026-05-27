@@ -14,8 +14,8 @@ import type {
 } from '@shared/types';
 
 // ============================================================
-// 记录详情页 — FK-26 退回记录追溯
-// 展示申请信息 + 审批时间线（含退回原因）+ 通行证信息
+// 记录详情页 — FK-25 记录详情查看
+// 展示申请全字段 + 审批结果(含时间/原因) + 通行状态 + 审批时间线
 // ============================================================
 
 interface RecordDetailData {
@@ -110,6 +110,11 @@ const RecordDetail: React.FC = () => {
 
   const { application: app, approval_records: records, pass } = data;
 
+  // 最新审批记录（用于摘要区展示审批结果附加信息）
+  const latestRecord = records.length > 0
+    ? records.reduce((a, b) => (a.operated_at > b.operated_at ? a : b))
+    : null;
+
   const detailRows: { label: string; value: string }[] = [
     { label: '访客姓名', value: app.visitor_name },
     { label: '手机号', value: app.phone },
@@ -143,6 +148,26 @@ const RecordDetail: React.FC = () => {
             {ApprovalStatusLabels[app.approval_status]}
           </span>
         </div>
+        {app.approval_status === 'approved' && latestRecord && (
+          <div>
+            <span className="form-label" style={{ display: 'inline', marginRight: 8 }}>审批时间：</span>
+            <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+              {formatTime(latestRecord.operated_at)}
+            </span>
+          </div>
+        )}
+        {(app.approval_status === 'returned' || app.approval_status === 'rejected') && latestRecord && (
+          <div>
+            <span className="form-label" style={{ display: 'inline', marginRight: 8 }}>
+              {app.approval_status === 'returned' ? '退回原因：' : '拒绝原因：'}
+            </span>
+            <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+              {latestRecord.reason || '未填写原因'}
+              {' · '}
+              {formatTime(latestRecord.operated_at)}
+            </span>
+          </div>
+        )}
         {app.pass_status && (
           <div>
             <span className="form-label" style={{ display: 'inline', marginRight: 8 }}>通行状态：</span>
