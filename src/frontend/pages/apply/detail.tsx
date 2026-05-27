@@ -5,6 +5,7 @@ import api, { getSessionId } from '../../lib/api-client';
 import { useToast } from '../../components/toast';
 import { ApprovalStatusLabels, PassStatusLabels, ApprovalStatus } from '@shared/types';
 import type { VisitorApplication, Department, Draft } from '@shared/types';
+import ConfirmModal from '../../components/modal/ConfirmModal';
 
 // ============================================================
 // 申请详情页 — FK-12 提交后锁定只读 + FK-13 退回重提编辑
@@ -54,14 +55,14 @@ function serializeFormData(form: FormData): Record<string, unknown> {
     visitor_name: form.visitor_name,
     phone: form.phone,
     id_card: form.id_card,
-    visitor_unit: form.visitor_unit,
+    company: form.visitor_unit,
     visitor_count: form.visitor_count === '' ? undefined : form.visitor_count,
-    has_vehicle: form.has_vehicle,
-    vehicle_plate: form.vehicle_plate,
+    is_driving: form.has_vehicle,
+    license_plate: form.vehicle_plate,
     contact_person: form.contact_person,
-    department: form.department,
-    visit_start: form.visit_start,
-    visit_end: form.visit_end,
+    department_id: form.department,
+    visit_start_time: form.visit_start,
+    visit_end_time: form.visit_end,
     visit_purpose: form.visit_purpose,
   };
 }
@@ -71,14 +72,14 @@ function restoreFormData(raw: Record<string, unknown>): FormData {
     visitor_name: (raw.visitor_name as string) || '',
     phone: (raw.phone as string) || '',
     id_card: (raw.id_card as string) || '',
-    visitor_unit: (raw.visitor_unit as string) || '',
+    visitor_unit: (raw.company as string) || (raw.visitor_unit as string) || '',
     visitor_count: (raw.visitor_count as number | undefined) ?? '',
-    has_vehicle: (raw.has_vehicle as boolean) ?? false,
-    vehicle_plate: (raw.vehicle_plate as string) || '',
+    has_vehicle: (raw.is_driving as boolean) ?? (raw.has_vehicle as boolean) ?? false,
+    vehicle_plate: (raw.license_plate as string) || (raw.vehicle_plate as string) || '',
     contact_person: (raw.contact_person as string) || '',
-    department: (raw.department as string) || '',
-    visit_start: (raw.visit_start as string) || '',
-    visit_end: (raw.visit_end as string) || '',
+    department: (raw.department_id as string) || (raw.department as string) || '',
+    visit_start: (raw.visit_start_time as string) || (raw.visit_start as string) || '',
+    visit_end: (raw.visit_end_time as string) || (raw.visit_end as string) || '',
     visit_purpose: (raw.visit_purpose as string) || '',
     attachment: null,
   };
@@ -104,6 +105,7 @@ const ApplyDetail: React.FC = () => {
   });
   const [departments, setDepartments] = useState<{ label: string; value: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
 
   // 加载申请详情
   useEffect(() => {
@@ -239,6 +241,23 @@ const ApplyDetail: React.FC = () => {
     }
   }, [form, id, isFormComplete, app, toast]);
 
+  // 放弃重提
+  const handleAbandon = useCallback(async () => {
+    if (!id) return;
+    setSubmitting(true);
+    setShowAbandonConfirm(false);
+    try {
+      const updated = await api.post<VisitorApplication>(`/applications/${id}/abandon`);
+      toast.success('已放弃重提，申请已终止');
+      setApp(updated);
+      setEditing(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '放弃重提失败');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [id, toast]);
+
   // ---- 加载中 ----
   if (loading) {
     return (
@@ -278,7 +297,7 @@ const ApplyDetail: React.FC = () => {
         </div>
 
         {/* 退回原因提示 */}
-        {returnReason && (
+        {returnReason !== null && returnReason.trim() !== '' && (
           <div style={{
             background: '#fff7e6', border: '1px solid #ffd591',
             borderRadius: 6, padding: '12px 16px', marginBottom: 20,
@@ -296,7 +315,25 @@ const ApplyDetail: React.FC = () => {
           </div>
         )}
 
-        {!returnReason && (
+        {returnReason !== null && returnReason.trim() === '' && (
+          <div style={{
+            background: '#fff7e6', border: '1px solid #ffd591',
+            borderRadius: 6, padding: '12px 16px', marginBottom: 20,
+            display: 'flex', alignItems: 'flex-start', gap: 8,
+          }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>&#9888;</span>
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: 4, color: '#d46b08' }}>
+                该申请已被退回
+              </div>
+              <div style={{ color: '#ad6800', fontSize: 13 }}>
+                退回原因缺失，请联系管理员确认
+              </div>
+            </div>
+          </div>
+        )}
+
+        {returnReason === null && (
           <div style={{
             background: '#fff7e6', border: '1px solid #ffd591',
             borderRadius: 6, padding: '12px 16px', marginBottom: 20,
@@ -367,6 +404,10 @@ const ApplyDetail: React.FC = () => {
               onClick={handleSaveDraft} disabled={submitting}>
               暂存
             </button>
+            <button type="button" className="btn btn-danger"
+              onClick={() => setShowAbandonConfirm(true)} disabled={submitting}>
+              放弃重提
+            </button>
             <button type="button" className="btn btn-primary"
               onClick={handleResubmit}
               disabled={!isFormComplete || submitting}>
@@ -374,6 +415,19 @@ const ApplyDetail: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* 放弃重提确认弹窗 */}
+        <ConfirmModal
+          visible={showAbandonConfirm}
+          title="放弃重提"
+          content="确定放弃此申请的重提吗？放弃后该申请将不再进行审批"
+          confirmText="确定放弃"
+          cancelText="取消"
+          confirmType="danger"
+          onConfirm={handleAbandon}
+          onCancel={() => setShowAbandonConfirm(false)}
+          loading={submitting}
+        />
       </div>
     );
   }

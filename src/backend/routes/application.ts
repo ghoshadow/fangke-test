@@ -133,4 +133,28 @@ router.patch('/:id', (req: Request, res: Response) => {
   return success(res, updated);
 });
 
+/** POST /api/applications/:id/abandon — 放弃重提（终态：已拒绝） */
+router.post('/:id/abandon', (req: Request, res: Response) => {
+  const app = ApplicationModel.findById(req.params.id);
+  if (!app) {
+    return fail(res, 40404, '申请不存在', 404);
+  }
+
+  // 只有退回状态才可放弃
+  if (app.approval_status !== 'returned') {
+    return fail(res, 40010, '该申请不可放弃');
+  }
+
+  // 更新为已拒绝（终态）
+  const updated = ApplicationModel.updateApprovalStatus(req.params.id, 'rejected', app.version);
+  if (!updated) {
+    return fail(res, 40010, '操作失败，请刷新后重试');
+  }
+
+  // 清理草稿
+  DraftModel.deleteBySessionAndApplication(app.session_id, req.params.id);
+
+  return success(res, ApplicationModel.findById(req.params.id));
+});
+
 export default router;
