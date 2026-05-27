@@ -13,6 +13,7 @@ interface FormModalProps {
   submitText?: string;
   cancelText?: string;
   loading?: boolean;
+  submitDisabled?: boolean;
   width?: string;
 }
 
@@ -25,6 +26,7 @@ const FormModal: React.FC<FormModalProps> = ({
   submitText = '提交',
   cancelText = '取消',
   loading,
+  submitDisabled,
   width,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
@@ -64,7 +66,7 @@ const FormModal: React.FC<FormModalProps> = ({
           <button className="btn btn-default" onClick={onCancel} disabled={loading}>
             {cancelText}
           </button>
-          <button className="btn btn-primary" onClick={onSubmit} disabled={loading}>
+          <button className="btn btn-primary" onClick={onSubmit} disabled={loading || submitDisabled}>
             {loading ? '处理中...' : submitText}
           </button>
         </div>

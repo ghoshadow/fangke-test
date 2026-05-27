@@ -175,7 +175,7 @@ const ApprovalManagement: React.FC = () => {
         operator_session_id: sessionId,
         reason: confirm.reason.trim(),
       });
-      toast.success(confirm.type === 'return' ? '已退回该申请' : '已拒绝该申请');
+      toast.success(confirm.type === 'return' ? '退回成功' : '已拒绝该申请');
       setConfirm(initConfirm());
       fetchData(activeTab, page, filters);
     } catch (err) {
@@ -330,6 +330,7 @@ const ApprovalManagement: React.FC = () => {
         onSubmit={handleReturnOrReject}
         onCancel={() => setConfirm(initConfirm())}
         loading={confirm.loading}
+        submitDisabled={!confirm.reason.trim()}
       >
         <div className="form-field">
           <label className="form-label">
@@ -344,6 +345,9 @@ const ApprovalManagement: React.FC = () => {
             onChange={(e) => setConfirm((prev) => ({ ...prev, reason: e.target.value }))}
             maxLength={200}
           />
+          <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+            {confirm.reason.length}/200
+          </span>
         </div>
         {confirm.application && (
           <p style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>
