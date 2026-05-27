@@ -77,7 +77,7 @@ export const VisitorPassModel = {
   },
 
   /** 确认到访（终态操作，不可回滚） */
-  confirmVisit(id: string): void {
+  confirmVisit(id: string, actualVisitTime: string): void {
     const db = getDatabase();
     const pass = this.findById(id);
     if (!pass) throw new Error('通行证不存在');
@@ -85,7 +85,7 @@ export const VisitorPassModel = {
 
     db.run(
       'UPDATE visitor_pass SET pass_status = ?, actual_visit_time = ? WHERE id = ?',
-      ['visited', now(), id]
+      ['visited', actualVisitTime, id]
     );
   },
 

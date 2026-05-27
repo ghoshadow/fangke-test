@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../lib/api-client';
 import { useToast } from '../../components/toast';
+import FormModal from '../../components/modal/FormModal';
+import TimePicker from '../../components/form/TimePicker';
 import {
   ApprovalStatusLabels,
   PassStatusLabels,
@@ -37,6 +39,8 @@ const PassDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [visitTime, setVisitTime] = useState('');
 
   // 加载通行证详情 + 部门列表
   useEffect(() => {
@@ -65,23 +69,32 @@ const PassDetail: React.FC = () => {
     return dept?.name || deptId;
   };
 
-  // 格式化时间
-  const formatTime = (iso: string): string => {
-    try {
-      const d = new Date(iso);
-      const pad = (n: number) => String(n).padStart(2, '0');
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    } catch {
-      return iso;
-    }
+  // 获取当前时间 HH:mm
+  const getCurrentTime = (): string => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   };
+
+  // 打开确认到访弹窗
+  const handleOpenConfirmModal = useCallback(() => {
+    if (confirming) return;
+    setVisitTime(getCurrentTime());
+    setModalVisible(true);
+  }, [confirming]);
 
   // 确认到访
   const handleConfirmVisit = useCallback(async () => {
     if (!id || confirming) return;
+    if (!visitTime) {
+      toast.error('请选择实际到访时间');
+      return;
+    }
     setConfirming(true);
     try {
-      const updated = await api.post<VisitorPass>(`/passes/${id}/confirm`);
+      const updated = await api.post<VisitorPass>(`/passes/${id}/confirm`, {
+        actual_visit_time: visitTime,
+      });
       setPass((prev) => {
         if (!prev) return prev;
         return {
@@ -90,13 +103,14 @@ const PassDetail: React.FC = () => {
           actual_visit_time: updated.actual_visit_time,
         };
       });
-      toast.success('已确认到访');
+      setModalVisible(false);
+      toast.success('确认到访成功');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '确认到访失败');
     } finally {
       setConfirming(false);
     }
-  }, [id, confirming, toast]);
+  }, [id, confirming, visitTime, toast]);
 
   // ---- 加载中 ----
   if (loading) {
@@ -225,20 +239,38 @@ const PassDetail: React.FC = () => {
             </span>
             {pass.actual_visit_time && (
               <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-                实际到访时间：{formatTime(pass.actual_visit_time)}
+                实际到访时间：{pass.actual_visit_time}
               </span>
             )}
           </div>
         ) : (
           <button
             className="btn btn-primary"
-            onClick={handleConfirmVisit}
+            onClick={handleOpenConfirmModal}
             disabled={confirming}
           >
             {confirming ? '确认中...' : '确认到访'}
           </button>
         )}
       </div>
+
+      {/* 确认到访弹窗 */}
+      <FormModal
+        visible={modalVisible}
+        title="确认到访"
+        onSubmit={handleConfirmVisit}
+        onCancel={() => !confirming && setModalVisible(false)}
+        submitText="提交"
+        loading={confirming}
+      >
+        <TimePicker
+          label="实际到访时间"
+          required
+          value={visitTime}
+          onChange={setVisitTime}
+          disabled={confirming}
+        />
+      </FormModal>
     </div>
   );
 };

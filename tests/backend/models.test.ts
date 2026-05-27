@@ -275,16 +275,16 @@ describe('Backend Models', () => {
 
     it('confirmVisit', () => {
       const pass = VisitorPassModel.findByApplicationId(testAppId)!;
-      VisitorPassModel.confirmVisit(pass.id);
+      VisitorPassModel.confirmVisit(pass.id, '14:30');
 
       const updated = VisitorPassModel.findById(pass.id);
       expect(updated!.pass_status).toBe('visited');
-      expect(updated!.actual_visit_time).not.toBeNull();
+      expect(updated!.actual_visit_time).toBe('14:30');
     });
 
     it('confirmVisit is idempotent-safe (throws on duplicate)', () => {
       const pass = VisitorPassModel.findByApplicationId(testAppId)!;
-      expect(() => VisitorPassModel.confirmVisit(pass.id)).toThrow('已确认到访');
+      expect(() => VisitorPassModel.confirmVisit(pass.id, '15:00')).toThrow('已确认到访');
     });
 
     it('query with filter', () => {

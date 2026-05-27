@@ -83,6 +83,14 @@ router.post('/:id/confirm', (req: Request, res: Response) => {
   const { id } = req.params;
   const { actual_visit_time } = req.body;
 
+  // 校验 actual_visit_time: 不可为空，格式 HH:mm
+  if (!actual_visit_time || typeof actual_visit_time !== 'string') {
+    return fail(res, 40021, '请填写实际到访时间');
+  }
+  if (!/^\d{2}:\d{2}$/.test(actual_visit_time)) {
+    return fail(res, 40021, '到访时间格式必须为 HH:mm');
+  }
+
   const pass = VisitorPassModel.findById(id);
   if (!pass) {
     return fail(res, 40404, '通行证不存在', 404);
@@ -93,7 +101,7 @@ router.post('/:id/confirm', (req: Request, res: Response) => {
   }
 
   try {
-    VisitorPassModel.confirmVisit(id);
+    VisitorPassModel.confirmVisit(id, actual_visit_time);
   } catch (err) {
     return fail(res, 40020, (err as Error).message);
   }

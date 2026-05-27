@@ -305,13 +305,26 @@ describe('API Routes', () => {
     });
 
     it('confirms visit', async () => {
-      const res = await request(app).post(`/api/passes/${passId}/confirm`);
+      const res = await request(app)
+        .post(`/api/passes/${passId}/confirm`)
+        .send({ actual_visit_time: '14:30' });
       expect(res.status).toBe(200);
       expect(res.body.data.pass_status).toBe('visited');
+      expect(res.body.data.actual_visit_time).toBe('14:30');
     });
 
     it('rejects duplicate confirm', async () => {
-      const res = await request(app).post(`/api/passes/${passId}/confirm`);
+      const res = await request(app)
+        .post(`/api/passes/${passId}/confirm`)
+        .send({ actual_visit_time: '15:00' });
+      expect(res.status).toBe(400);
+    });
+
+    it('rejects missing actual_visit_time', async () => {
+      const passesRes = await request(app).get('/api/passes');
+      const newPassId = passesRes.body.data.items[0]?.id;
+      if (!newPassId) return;
+      const res = await request(app).post(`/api/passes/${newPassId}/confirm`);
       expect(res.status).toBe(400);
     });
   });
