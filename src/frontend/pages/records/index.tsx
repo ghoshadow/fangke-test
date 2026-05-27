@@ -7,6 +7,7 @@ import { Table, Pagination } from '../../components/table';
 import type { Column } from '../../components/table';
 import type { VisitorApplication, Department, PaginatedData } from '@shared/types';
 import { ApprovalStatusLabels, PassStatusLabels } from '@shared/types';
+import { validateRecordFilter, getFirstFilterError } from '../../validators/record-filter';
 
 type FilterValues = Record<string, string>;
 
@@ -192,9 +193,16 @@ const RecordList: React.FC = () => {
   }, []);
 
   const handleSearch = useCallback(() => {
+    // 查询前校验筛选条件合法性
+    const errors = validateRecordFilter(filterValues);
+    const firstError = getFirstFilterError(errors);
+    if (firstError) {
+      toast.error(firstError);
+      return;
+    }
     setHasSearched(true);
     fetchRecords(filterValues, 1);
-  }, [filterValues, fetchRecords]);
+  }, [filterValues, fetchRecords, toast]);
 
   const handleReset = useCallback(() => {
     const resetValues = { ...DEFAULT_VALUES };
@@ -213,7 +221,7 @@ const RecordList: React.FC = () => {
 
   const filterFields = [
     { key: 'visitor_name', label: '访客姓名', type: 'text' as const, placeholder: '模糊搜索' },
-    { key: 'phone', label: '手机号', type: 'text' as const, placeholder: '精确匹配' },
+    { key: 'phone', label: '手机号', type: 'text' as const, placeholder: '模糊搜索' },
     { key: 'id_card', label: '身份证号', type: 'text' as const, placeholder: '精确匹配' },
     { key: 'contact_person', label: '内部对接人', type: 'text' as const, placeholder: '模糊搜索' },
     { key: 'department', label: '对接人部门', type: 'select' as const, placeholder: '全部', options: departments },

@@ -4,8 +4,13 @@ import { ApprovalRecordModel } from '../models/approval-record';
 import { VisitorPassModel } from '../models/visitor-pass';
 import { success, paginated, fail } from '../middleware/response';
 import type { ApprovalStatusType, PassStatusType } from '../../shared/types';
+import { ApprovalStatus, PassStatus } from '../../shared/types';
 
 const router = Router();
+
+// 有效状态枚举集合（用于查询参数校验）
+const VALID_APPROVAL_STATUSES = new Set<string>(Object.values(ApprovalStatus));
+const VALID_PASS_STATUSES = new Set<string>(Object.values(PassStatus));
 
 /** GET /api/records — 多条件组合查询 */
 router.get('/', (req: Request, res: Response) => {
@@ -14,6 +19,16 @@ router.get('/', (req: Request, res: Response) => {
     company, date_from, date_to, license_plate,
     approval_status, pass_status, page, page_size,
   } = req.query;
+
+  // 校验审批状态枚举值
+  if (approval_status && typeof approval_status === 'string' && !VALID_APPROVAL_STATUSES.has(approval_status)) {
+    return fail(res, 40001, '审批状态值无效');
+  }
+
+  // 校验通行状态枚举值
+  if (pass_status && typeof pass_status === 'string' && !VALID_PASS_STATUSES.has(pass_status)) {
+    return fail(res, 40002, '通行状态值无效');
+  }
 
   const result = ApplicationModel.recordQuery({
     visitor_name: name as string | undefined,

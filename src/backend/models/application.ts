@@ -99,7 +99,7 @@ export const ApplicationModel = {
     const params: (string | number)[] = [];
 
     if (q.visitor_name) { conditions.push('visitor_name LIKE ?'); params.push(`%${q.visitor_name}%`); }
-    if (q.phone) { conditions.push('phone = ?'); params.push(q.phone); }
+    if (q.phone) { conditions.push('phone LIKE ?'); params.push(`%${q.phone}%`); }
     if (q.id_card) { conditions.push('id_card = ?'); params.push(q.id_card); }
     if (q.department_id) { conditions.push('department_id = ?'); params.push(q.department_id); }
     if (q.approval_status) { conditions.push('approval_status = ?'); params.push(q.approval_status); }
