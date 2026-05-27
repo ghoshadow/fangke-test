@@ -70,11 +70,14 @@ router.get('/', (req: Request, res: Response) => {
 router.get('/:id', (req: Request, res: Response) => {
   const pass = VisitorPassModel.findById(req.params.id);
   if (!pass) {
-    return fail(res, 40404, '通行证不存在', 404);
+    return fail(res, 40404, '通行证记录不存在或已失效', 404);
   }
 
   // 关联申请信息
   const app = ApplicationModel.findById(pass.application_id);
+  if (!app || app.approval_status !== 'approved') {
+    return fail(res, 40405, '该申请未审批通过，无通行证可查看', 404);
+  }
   return success(res, { ...pass, application: app });
 });
 
@@ -93,11 +96,17 @@ router.post('/:id/confirm', (req: Request, res: Response) => {
 
   const pass = VisitorPassModel.findById(id);
   if (!pass) {
-    return fail(res, 40404, '通行证不存在', 404);
+    return fail(res, 40404, '通行证记录不存在或已失效', 404);
+  }
+
+  // 校验申请审批状态
+  const app = ApplicationModel.findById(pass.application_id);
+  if (!app || app.approval_status !== 'approved') {
+    return fail(res, 40022, '该申请未审批通过，无法确认到访');
   }
 
   if (pass.pass_status === 'visited') {
-    return fail(res, 40020, '已确认到访，不可重复操作');
+    return fail(res, 40020, '该访客已确认到访，不可重复操作');
   }
 
   try {

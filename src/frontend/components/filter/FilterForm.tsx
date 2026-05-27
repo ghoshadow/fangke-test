@@ -1,7 +1,7 @@
 import React from 'react';
 
 // ============================================================
-// FilterForm — 多条件筛选表单（支持重置）
+// FilterForm — 多条件筛选表单（支持重置 + 字段校验）
 // ============================================================
 
 interface FilterField {
@@ -18,6 +18,8 @@ interface FilterFormProps {
   onChange: (key: string, value: string) => void;
   onSearch: () => void;
   onReset: () => void;
+  onBlur?: (key: string) => void;
+  errors?: Record<string, string>;
   loading?: boolean;
 }
 
@@ -27,6 +29,8 @@ const FilterForm: React.FC<FilterFormProps> = ({
   onChange,
   onSearch,
   onReset,
+  onBlur,
+  errors,
   loading,
 }) => {
   const handleSubmit = (e: React.FormEvent) => {
@@ -72,13 +76,19 @@ const FilterForm: React.FC<FilterFormProps> = ({
                 />
               </div>
             ) : (
-              <input
-                type={field.type}
-                className="form-input filter-input"
-                placeholder={field.placeholder || ''}
-                value={values[field.key] || ''}
-                onChange={(e) => onChange(field.key, e.target.value)}
-              />
+              <>
+                <input
+                  type={field.type}
+                  className={`form-input filter-input ${errors?.[field.key] ? 'input-error' : ''}`}
+                  placeholder={field.placeholder || ''}
+                  value={values[field.key] || ''}
+                  onChange={(e) => onChange(field.key, e.target.value)}
+                  onBlur={() => onBlur?.(field.key)}
+                />
+                {errors?.[field.key] && (
+                  <span className="error-text filter-error">{errors[field.key]}</span>
+                )}
+              </>
             )}
           </div>
         ))}

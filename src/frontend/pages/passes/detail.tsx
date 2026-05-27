@@ -237,9 +237,13 @@ const PassDetail: React.FC = () => {
             <span className="status-tag status-visited" style={{ fontSize: 14, padding: '6px 16px' }}>
               已确认到访
             </span>
-            {pass.actual_visit_time && (
+            {pass.actual_visit_time ? (
               <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
                 实际到访时间：{pass.actual_visit_time}
+              </span>
+            ) : (
+              <span style={{ color: '#e65100', fontSize: 'var(--font-size-sm)', fontWeight: 500 }}>
+                数据异常：已到访但缺少实际到访时间
               </span>
             )}
           </div>

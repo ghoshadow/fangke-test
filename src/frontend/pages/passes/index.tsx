@@ -30,6 +30,23 @@ const FILTER_FIELDS = [
 
 const INITIAL_FILTERS = { name: '', phone: '', id_card: '' };
 
+/** 搜索字段校验规则（与申请校验规则 VR1/VR2/VR3 对应） */
+function validateSearchFilters(values: Record<string, string>): string | null {
+  // VR1: 访客姓名不能超过20个字符
+  if (values.name && values.name.length > 20) {
+    return '访客姓名输入不能超过20个字符';
+  }
+  // VR2: 手机号格式（如果填写了则必须是11位以1开头）
+  if (values.phone && !/^1\d{10}$/.test(values.phone)) {
+    return '请输入正确的11位手机号';
+  }
+  // VR3: 身份证号格式（如果填写了则必须是15位或18位）
+  if (values.id_card && !/^(\d{15}|\d{17}[\dXx])$/.test(values.id_card)) {
+    return '请输入正确的身份证号格式（15位或18位）';
+  }
+  return null;
+}
+
 const PassList: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
@@ -39,6 +56,23 @@ const PassList: React.FC = () => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [filters, setFilters] = useState<Record<string, string>>({ ...INITIAL_FILTERS });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  /** 单字段 onBlur 校验 */
+  const handleFieldBlur = (key: string) => {
+    const value = filters[key] || '';
+    const newErrors = { ...errors };
+    if (key === 'name' && value.length > 20) {
+      newErrors.name = '访客姓名输入不能超过20个字符';
+    } else if (key === 'phone' && value && !/^1\d{10}$/.test(value)) {
+      newErrors.phone = '请输入正确的11位手机号';
+    } else if (key === 'id_card' && value && !/^(\d{15}|\d{17}[\dXx])$/.test(value)) {
+      newErrors.id_card = '请输入正确的身份证号格式（15位或18位）';
+    } else {
+      delete newErrors[key];
+    }
+    setErrors(newErrors);
+  };
 
   const fetchData = useCallback(
     async (pageNum: number, filterValues: Record<string, string>) => {
@@ -69,8 +103,13 @@ const PassList: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  // 搜索
+  // 搜索（含格式校验）
   const handleSearch = () => {
+    const error = validateSearchFilters(filters);
+    if (error) {
+      toast.error(error);
+      return;
+    }
     if (page === 1) {
       fetchData(1, filters);
     } else {
@@ -82,6 +121,7 @@ const PassList: React.FC = () => {
   const handleReset = () => {
     const empty = { ...INITIAL_FILTERS };
     setFilters(empty);
+    setErrors({});
     if (page === 1) {
       fetchData(1, empty);
     } else {
@@ -141,6 +181,8 @@ const PassList: React.FC = () => {
         onChange={handleFilterChange}
         onSearch={handleSearch}
         onReset={handleReset}
+        onBlur={handleFieldBlur}
+        errors={errors}
         loading={loading}
       />
 
