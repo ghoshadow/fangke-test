@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Input, NumberInput, Radio, Select, TimePicker, Textarea, FileUpload } from '../../components/form';
 import { useToast } from '../../components/toast';
-import api from '../../lib/api-client';
-import type { Department } from '@shared/types';
+import api, { getSessionId } from '../../lib/api-client';
+import type { Department, Draft } from '@shared/types';
 
 // ============================================================
 // 访客申请表单 — FK-9
@@ -45,13 +45,50 @@ const vehicleOptions = [
   { label: '否', value: false },
 ];
 
+/** 从表单数据中提取可序列化的草稿字段（排除 File 对象） */
+function serializeFormData(form: FormData): Record<string, unknown> {
+  return {
+    visitor_name: form.visitor_name,
+    phone: form.phone,
+    id_card: form.id_card,
+    visitor_unit: form.visitor_unit,
+    visitor_count: form.visitor_count === '' ? undefined : form.visitor_count,
+    has_vehicle: form.has_vehicle,
+    vehicle_plate: form.vehicle_plate,
+    contact_person: form.contact_person,
+    department: form.department,
+    visit_start: form.visit_start,
+    visit_end: form.visit_end,
+    visit_purpose: form.visit_purpose,
+  };
+}
+
+/** 从草稿 JSON 还原为 FormData（File 无法序列化，忽略） */
+function restoreFormData(raw: Record<string, unknown>): FormData {
+  return {
+    visitor_name: (raw.visitor_name as string) || '',
+    phone: (raw.phone as string) || '',
+    id_card: (raw.id_card as string) || '',
+    visitor_unit: (raw.visitor_unit as string) || '',
+    visitor_count: (raw.visitor_count as number | undefined) ?? '',
+    has_vehicle: (raw.has_vehicle as boolean) ?? false,
+    vehicle_plate: (raw.vehicle_plate as string) || '',
+    contact_person: (raw.contact_person as string) || '',
+    department: (raw.department as string) || '',
+    visit_start: (raw.visit_start as string) || '',
+    visit_end: (raw.visit_end as string) || '',
+    visit_purpose: (raw.visit_purpose as string) || '',
+    attachment: null, // File 对象无法序列化到草稿，重置为 null
+  };
+}
+
 const VisitorApply: React.FC = () => {
   const [form, setForm] = useState<FormData>(initialFormData);
   const [departments, setDepartments] = useState<{ label: string; value: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
 
-  // 加载部门列表
+  // 加载部门列表 + 恢复草稿
   useEffect(() => {
     api.get<Department[]>('/departments')
       .then((data) => {
@@ -59,6 +96,25 @@ const VisitorApply: React.FC = () => {
       })
       .catch(() => {
         // 部门加载失败时保持空列表
+      });
+
+    // 恢复草稿
+    const sessionId = getSessionId();
+    api.get<Draft | null>('/drafts', { session_id: sessionId })
+      .then((draft) => {
+        if (draft?.form_data) {
+          try {
+            const raw = typeof draft.form_data === 'string'
+              ? JSON.parse(draft.form_data)
+              : draft.form_data;
+            setForm(restoreFormData(raw));
+          } catch {
+            // 草稿数据损坏，忽略
+          }
+        }
+      })
+      .catch(() => {
+        // 草稿加载失败时保持空表单
       });
   }, []);
 
@@ -104,20 +160,8 @@ const VisitorApply: React.FC = () => {
     setSubmitting(true);
     try {
       await api.post('/drafts', {
-        data: {
-          visitor_name: form.visitor_name,
-          phone: form.phone,
-          id_card: form.id_card,
-          visitor_unit: form.visitor_unit,
-          visitor_count: form.visitor_count === '' ? undefined : form.visitor_count,
-          has_vehicle: form.has_vehicle,
-          vehicle_plate: form.vehicle_plate,
-          contact_person: form.contact_person,
-          department: form.department,
-          visit_start: form.visit_start,
-          visit_end: form.visit_end,
-          visit_purpose: form.visit_purpose,
-        },
+        session_id: getSessionId(),
+        form_data: serializeFormData(form),
       });
       toast.success('暂存成功');
     } catch (err) {
@@ -133,6 +177,7 @@ const VisitorApply: React.FC = () => {
     setSubmitting(true);
     try {
       await api.post('/applications', {
+        session_id: getSessionId(),
         visitor_name: form.visitor_name,
         phone: form.phone,
         id_card: form.id_card || undefined,
