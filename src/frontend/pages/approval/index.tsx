@@ -165,7 +165,7 @@ const ApprovalManagement: React.FC = () => {
     const app = confirm.application;
     if (!app) return;
     if (!confirm.reason.trim()) {
-      toast.error('请填写原因');
+      toast.error(confirm.type === 'return' ? '退回必须填写原因' : '拒绝必须填写原因');
       return;
     }
     setConfirm((prev) => ({ ...prev, loading: true }));
