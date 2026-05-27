@@ -1,4 +1,4 @@
-import express, { Express } from 'express';
+import express from 'express';
 import cors from 'cors';
 import { initDatabase } from './config';
 import { errorHandler } from './middleware/response';
@@ -9,9 +9,10 @@ import recordRoutes from './routes/record';
 import draftRoutes from './routes/draft';
 import departmentRoutes from './routes/department';
 
-export { initDatabase };
+const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 
-export function createApp(): Express {
+// 创建并配置 Express 应用（不启动监听，便于测试导入）
+export function createApp() {
   const app = express();
 
   // 中间件
@@ -37,32 +38,28 @@ export function createApp(): Express {
   return app;
 }
 
-const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
+// 供测试文件导入
+export { initDatabase };
 
-async function main() {
-  // 初始化数据库（内存 SQLite）
-  await initDatabase();
-  console.log('✅ 数据库初始化完成');
+// 仅在直接运行时启动监听（被 vitest 导入时不启动）
+const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
 
-  const app = createApp();
+const app = createApp();
 
-  app.listen(PORT, () => {
-    console.log(`🚀 后端服务已启动: http://localhost:${PORT}`);
-  });
-}
-
-// 仅在直接运行时启动服务，被 import 时不启动
-const isDirectRun =
-  typeof process !== 'undefined' &&
-  process.argv[1] &&
-  (process.argv[1].endsWith('/app.ts') || process.argv[1].endsWith('/app.js'));
-
-if (isDirectRun) {
+if (!isTestEnv) {
   main().catch((err) => {
     console.error('❌ 启动失败:', err);
     process.exit(1);
   });
 }
 
-// 用于 supertest 的默认导出
-export default createApp();
+async function main() {
+  await initDatabase();
+  console.log('✅ 数据库初始化完成');
+
+  app.listen(PORT, () => {
+    console.log(`🚀 后端服务已启动: http://localhost:${PORT}`);
+  });
+}
+
+export default app;
