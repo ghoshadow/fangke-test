@@ -5,9 +5,39 @@ import { VisitorPassModel } from '../models/visitor-pass';
 import { validateApprovalOperation, validateReasonRequired } from '../validators/approval';
 import { success, paginated, fail } from '../middleware/response';
 import { now, getDatabase } from '../config';
-import type { ApprovalStatusType } from '../../shared/types';
+import type { ApprovalStatusType, VisitorApplication } from '../../shared/types';
 
 const router = Router();
+
+/** 内存筛选辅助：对申请数组应用筛选条件 */
+function filterApplications(
+  items: VisitorApplication[],
+  filters: {
+    name?: string;
+    phone?: string;
+    date_from?: string;
+    date_to?: string;
+    status?: string;
+  },
+): VisitorApplication[] {
+  let result = items;
+  if (filters.name) {
+    result = result.filter((a) => a.visitor_name.includes(filters.name!));
+  }
+  if (filters.phone) {
+    result = result.filter((a) => a.phone === filters.phone);
+  }
+  if (filters.date_from) {
+    result = result.filter((a) => a.visit_start_time >= filters.date_from!);
+  }
+  if (filters.date_to) {
+    result = result.filter((a) => a.visit_start_time <= filters.date_to! + ' 23:59:59');
+  }
+  if (filters.status) {
+    result = result.filter((a) => a.approval_status === filters.status);
+  }
+  return result;
+}
 
 /** GET /api/approvals/pending — 待我处理列表 */
 router.get('/pending', (req: Request, res: Response) => {
@@ -29,40 +59,71 @@ router.get('/pending', (req: Request, res: Response) => {
 
 /** GET /api/approvals/created — 我创建的列表 */
 router.get('/created', (req: Request, res: Response) => {
-  const { session_id } = req.query;
+  const { session_id, name, phone, date_from, date_to, status, page, page_size } = req.query;
   if (!session_id) {
     return paginated(res, { items: [], total: 0, page: 1, page_size: 20 });
   }
-  const items = ApplicationModel.findBySessionId(session_id as string);
-  return success(res, items);
+
+  let items = ApplicationModel.findBySessionId(session_id as string);
+
+  // 应用筛选条件
+  items = filterApplications(items, {
+    name: name as string | undefined,
+    phone: phone as string | undefined,
+    date_from: date_from as string | undefined,
+    date_to: date_to as string | undefined,
+    status: status as string | undefined,
+  });
+
+  // 分页
+  const p = page ? Number(page) : 1;
+  const ps = page_size ? Number(page_size) : 20;
+  const total = items.length;
+  const start = (p - 1) * ps;
+  const paged = items.slice(start, start + ps);
+
+  return paginated(res, { items: paged, total, page: p, page_size: ps });
 });
 
 /** GET /api/approvals/processed — 我已处理列表 */
 router.get('/processed', (req: Request, res: Response) => {
-  const { session_id } = req.query;
+  const { session_id, name, phone, date_from, date_to, status, page, page_size } = req.query;
   if (!session_id) {
     return paginated(res, { items: [], total: 0, page: 1, page_size: 20 });
   }
 
-  // 找出该 session 处理过的所有申请 ID
-  // 通过 approval_record 表查 operator_session_id 对应的 application_id
-  // 然后获取这些申请的详情
   const db = getDatabase();
   const result = db.exec(
     `SELECT DISTINCT application_id FROM approval_record WHERE operator_session_id = ?`,
-    [session_id as string]
+    [session_id as string],
   );
 
   if (!result.length || !result[0].values.length) {
-    return success(res, []);
+    return paginated(res, { items: [], total: 0, page: 1, page_size: 20 });
   }
 
   const appIds = result[0].values.map((row: unknown[]) => row[0] as string);
-  const items = appIds
+  let items = appIds
     .map((id: string) => ApplicationModel.findById(id))
-    .filter(Boolean);
+    .filter(Boolean) as VisitorApplication[];
 
-  return success(res, items);
+  // 应用筛选条件
+  items = filterApplications(items, {
+    name: name as string | undefined,
+    phone: phone as string | undefined,
+    date_from: date_from as string | undefined,
+    date_to: date_to as string | undefined,
+    status: status as string | undefined,
+  });
+
+  // 分页
+  const p = page ? Number(page) : 1;
+  const ps = page_size ? Number(page_size) : 20;
+  const total = items.length;
+  const start = (p - 1) * ps;
+  const paged = items.slice(start, start + ps);
+
+  return paginated(res, { items: paged, total, page: p, page_size: ps });
 });
 
 /** POST /api/approvals/:id/approve — 同意申请 */
