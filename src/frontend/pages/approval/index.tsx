@@ -152,7 +152,7 @@ const ApprovalManagement: React.FC = () => {
     setConfirm((prev) => ({ ...prev, loading: true }));
     try {
       await api.post(`/approvals/${app.id}/approve`, { operator_session_id: sessionId });
-      toast.success('已同意该申请');
+      toast.success('审批通过');
       setConfirm(initConfirm());
       setOperatingId(null);
       fetchData(activeTab, page, filters);
