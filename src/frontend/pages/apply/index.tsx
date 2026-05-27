@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Input, NumberInput, Radio, Select, TimePicker, Textarea, FileUpload } from '../../components/form';
 import { useToast } from '../../components/toast';
 import api, { getSessionId } from '../../lib/api-client';
-import type { Department, Draft } from '@shared/types';
+import type { Department, Draft, VisitorApplication } from '@shared/types';
 
 // ============================================================
 // 访客申请表单 — FK-9
@@ -87,6 +88,7 @@ const VisitorApply: React.FC = () => {
   const [departments, setDepartments] = useState<{ label: string; value: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
+  const navigate = useNavigate();
 
   // 加载部门列表 + 恢复草稿
   useEffect(() => {
@@ -176,29 +178,32 @@ const VisitorApply: React.FC = () => {
     if (!isFormComplete) return;
     setSubmitting(true);
     try {
-      await api.post('/applications', {
+      const result = await api.post<VisitorApplication>('/applications', {
         session_id: getSessionId(),
-        visitor_name: form.visitor_name,
+        visitor_name: form.visitor_name.trim(),
         phone: form.phone,
-        id_card: form.id_card || undefined,
-        visitor_unit: form.visitor_unit || undefined,
+        id_card: form.id_card || null,
+        company: form.visitor_unit || null,
         visitor_count: form.visitor_count,
-        has_vehicle: form.has_vehicle,
-        vehicle_plate: form.has_vehicle ? form.vehicle_plate : undefined,
-        contact_person: form.contact_person,
-        department: form.department,
-        visit_start: form.visit_start,
-        visit_end: form.visit_end,
-        visit_purpose: form.visit_purpose,
+        is_driving: form.has_vehicle,
+        license_plate: form.has_vehicle ? form.vehicle_plate : null,
+        contact_person: form.contact_person.trim(),
+        department_id: form.department,
+        visit_start_time: form.visit_start,
+        visit_end_time: form.visit_end,
+        visit_purpose: form.visit_purpose.trim(),
+        attachment_url: null,
       });
       toast.success('提交成功');
       setForm(initialFormData);
+      // 跳转至申请详情页（锁定只读）
+      navigate(`/apply/${result.id}`, { replace: true });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '提交失败');
+      toast.error(err instanceof Error ? err.message : '提交失败，请稍后重试');
     } finally {
       setSubmitting(false);
     }
-  }, [form, isFormComplete, toast]);
+  }, [form, isFormComplete, toast, navigate]);
 
   return (
     <div className="page">
