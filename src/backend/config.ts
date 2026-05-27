@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS visitor_application (
   approval_status TEXT NOT NULL DEFAULT 'pending' CHECK(approval_status IN ('pending','approved','returned','rejected')),
   pass_status TEXT CHECK(pass_status IS NULL OR pass_status IN ('not_visited','visited')),
   session_id TEXT NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

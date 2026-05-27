@@ -127,9 +127,10 @@ describe('Backend Models', () => {
         session_id: 'test-session-update',
       });
 
-      ApplicationModel.updateApprovalStatus(app.id, 'approved');
+      ApplicationModel.updateApprovalStatus(app.id, 'approved', app.version);
       const updated = ApplicationModel.findById(app.id);
       expect(updated!.approval_status).toBe('approved');
+      expect(updated!.version).toBe(app.version + 1);
     });
 
     it('updatePassStatus', () => {
@@ -165,7 +166,7 @@ describe('Backend Models', () => {
         session_id: 'test-session-return',
       });
 
-      ApplicationModel.updateApprovalStatus(app.id, 'returned');
+      ApplicationModel.updateApprovalStatus(app.id, 'returned', app.version);
       ApplicationModel.updateFields(app.id, { visit_purpose: '更新后的目的' });
 
       const updated = ApplicationModel.findById(app.id);

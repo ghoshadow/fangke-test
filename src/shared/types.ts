@@ -83,14 +83,15 @@ export interface VisitorApplication {
   approval_status: ApprovalStatusType;
   pass_status: PassStatusType | null;
   session_id: string;
+  version: number;
   created_at: string;
   updated_at: string;
 }
 
-/** 创建申请的输入（不含 id、状态、时间戳等服务端字段） */
+/** 创建申请的输入（不含 id、状态、时间戳、版本号等服务端字段） */
 export type CreateApplicationInput = Omit<
   VisitorApplication,
-  'id' | 'approval_status' | 'pass_status' | 'created_at' | 'updated_at'
+  'id' | 'approval_status' | 'pass_status' | 'version' | 'created_at' | 'updated_at'
 >;
 
 /** 申请列表查询参数 */

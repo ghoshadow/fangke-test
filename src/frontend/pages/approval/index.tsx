@@ -75,6 +75,7 @@ const ApprovalManagement: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [filters, setFilters] = useState<Record<string, string>>({ ...INITIAL_FILTERS });
   const [confirm, setConfirm] = useState<ConfirmState>(initConfirm());
+  const [operatingId, setOperatingId] = useState<string | null>(null);
 
   // 加载数据
   const fetchData = useCallback(
@@ -153,6 +154,7 @@ const ApprovalManagement: React.FC = () => {
       await api.post(`/approvals/${app.id}/approve`, { operator_session_id: sessionId });
       toast.success('已同意该申请');
       setConfirm(initConfirm());
+      setOperatingId(null);
       fetchData(activeTab, page, filters);
     } catch (err) {
       toast.error((err as Error).message || '操作失败');
@@ -177,6 +179,7 @@ const ApprovalManagement: React.FC = () => {
       });
       toast.success(confirm.type === 'return' ? '退回成功' : '已拒绝该申请');
       setConfirm(initConfirm());
+      setOperatingId(null);
       fetchData(activeTab, page, filters);
     } catch (err) {
       toast.error((err as Error).message || '操作失败');
@@ -186,6 +189,7 @@ const ApprovalManagement: React.FC = () => {
 
   // 打开确认弹窗
   const openConfirm = (type: ConfirmState['type'], application: VisitorApplication) => {
+    setOperatingId(application.id);
     setConfirm({ visible: true, type, application, loading: false, reason: '' });
   };
 
@@ -221,19 +225,29 @@ const ApprovalManagement: React.FC = () => {
       render: (_, record) => {
         // 待我处理 tab → 同意/退回/拒绝
         if (activeTab === 'pending') {
+          const isOperating = operatingId === record.id;
           return (
             <div style={{ display: 'flex', gap: 4 }}>
-              <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); openConfirm('approve', record); }}>
-                同意
+              <button
+                className="btn btn-primary btn-sm"
+                disabled={isOperating}
+                onClick={(e) => { e.stopPropagation(); openConfirm('approve', record); }}
+              >
+                {isOperating ? '处理中...' : '同意'}
               </button>
               <button
                 className="btn btn-sm"
                 style={{ borderColor: 'var(--color-warning)', color: '#d46b08' }}
+                disabled={isOperating}
                 onClick={(e) => { e.stopPropagation(); openConfirm('return', record); }}
               >
                 退回
               </button>
-              <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); openConfirm('reject', record); }}>
+              <button
+                className="btn btn-danger btn-sm"
+                disabled={isOperating}
+                onClick={(e) => { e.stopPropagation(); openConfirm('reject', record); }}
+              >
                 拒绝
               </button>
             </div>
@@ -318,7 +332,7 @@ const ApprovalManagement: React.FC = () => {
         content={`确认同意「${confirm.application?.visitor_name ?? ''}」的访客申请？同意后将自动生成通行证。`}
         confirmText="同意"
         onConfirm={handleApprove}
-        onCancel={() => setConfirm(initConfirm())}
+        onCancel={() => { setConfirm(initConfirm()); setOperatingId(null); }}
         loading={confirm.loading}
       />
 
@@ -328,7 +342,7 @@ const ApprovalManagement: React.FC = () => {
         title={confirm.type === 'return' ? '退回申请' : '拒绝申请'}
         submitText={confirm.type === 'return' ? '确认退回' : '确认拒绝'}
         onSubmit={handleReturnOrReject}
-        onCancel={() => setConfirm(initConfirm())}
+        onCancel={() => { setConfirm(initConfirm()); setOperatingId(null); }}
         loading={confirm.loading}
         submitDisabled={!confirm.reason.trim()}
       >

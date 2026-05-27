@@ -29,12 +29,13 @@ function rowToApplication(row: unknown[]): VisitorApplication {
     approval_status: r[14] as ApprovalStatus,
     pass_status: r[15] as PassStatus | null,
     session_id: r[16] as string,
-    created_at: r[17] as string,
-    updated_at: r[18] as string,
+    version: r[17] as number,
+    created_at: r[18] as string,
+    updated_at: r[19] as string,
   };
 }
 
-const ALL_COLUMNS = `id, visitor_name, phone, id_card, company, visitor_count, is_driving, license_plate, contact_person, department_id, visit_start_time, visit_end_time, visit_purpose, attachment_url, approval_status, pass_status, session_id, created_at, updated_at`;
+const ALL_COLUMNS = `id, visitor_name, phone, id_card, company, visitor_count, is_driving, license_plate, contact_person, department_id, visit_start_time, visit_end_time, visit_purpose, attachment_url, approval_status, pass_status, session_id, version, created_at, updated_at`;
 
 export const ApplicationModel = {
   /** 创建申请 */
@@ -43,14 +44,14 @@ export const ApplicationModel = {
     const id = generateId();
     const timestamp = now();
     db.run(
-      `INSERT INTO visitor_application (${ALL_COLUMNS}) VALUES (?,?,?,?,?,?,?, ?,?,?,?,?, ?,?,?, ?,?,?,?)`,
+      `INSERT INTO visitor_application (${ALL_COLUMNS}) VALUES (?,?,?,?,?,?,?, ?,?,?,?,?, ?,?,?, ?,?,?,?,?)`,
       [
         id, input.visitor_name, input.phone, input.id_card ?? null, input.company ?? null,
         input.visitor_count, input.is_driving ? 1 : 0, input.license_plate ?? null,
         input.contact_person, input.department_id,
         input.visit_start_time, input.visit_end_time, input.visit_purpose,
         input.attachment_url ?? null, 'pending', null,
-        input.session_id, timestamp, timestamp,
+        input.session_id, 1, timestamp, timestamp,
       ]
     );
     return this.findById(id)!;
@@ -128,16 +129,23 @@ export const ApplicationModel = {
     return { items, total, page, page_size: pageSize };
   },
 
-  /** 更新审批状态 */
-  updateApprovalStatus(id: string, status: ApprovalStatus): void {
+  /** 更新审批状态（乐观锁：仅当 version 匹配时才更新） */
+  updateApprovalStatus(id: string, status: ApprovalStatus, expectedVersion: number): boolean {
     const db = getDatabase();
-    db.run('UPDATE visitor_application SET approval_status = ?, updated_at = ? WHERE id = ?', [status, now(), id]);
+    db.run(
+      'UPDATE visitor_application SET approval_status = ?, version = version + 1, updated_at = ? WHERE id = ? AND version = ?',
+      [status, now(), id, expectedVersion],
+    );
+    // 验证更新是否生效（version 不匹配则 affected rows = 0）
+    const result = db.exec('SELECT version FROM visitor_application WHERE id = ?', [id]);
+    const newVersion = result[0]?.values[0]?.[0] as number | undefined;
+    return newVersion === expectedVersion + 1;
   },
 
   /** 更新通行状态 */
   updatePassStatus(id: string, status: PassStatus): void {
     const db = getDatabase();
-    db.run('UPDATE visitor_application SET pass_status = ?, updated_at = ? WHERE id = ?', [status, now(), id]);
+    db.run('UPDATE visitor_application SET pass_status = ?, version = version + 1, updated_at = ? WHERE id = ?', [status, now(), id]);
   },
 
   /** 更新申请字段（退回重提场景） */
@@ -167,6 +175,7 @@ export const ApplicationModel = {
     if (!sets.length) return;
     sets.push('approval_status = ?');
     params.push('pending');
+    sets.push('version = version + 1');
     sets.push('updated_at = ?');
     params.push(now());
     params.push(id);

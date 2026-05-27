@@ -146,8 +146,11 @@ router.post('/:id/approve', (req: Request, res: Response) => {
     return fail(res, validation.code!, validation.msg!);
   }
 
-  // 更新审批状态为 approved
-  ApplicationModel.updateApprovalStatus(id, 'approved');
+  // 更新审批状态为 approved（乐观锁）
+  const updated = ApplicationModel.updateApprovalStatus(id, 'approved', app.version);
+  if (!updated) {
+    return fail(res, 40010, '该申请已被其他用户处理，请刷新后重试');
+  }
 
   // 记录审批操作（只写）
   ApprovalRecordModel.create({
@@ -193,8 +196,11 @@ router.post('/:id/return', (req: Request, res: Response) => {
     return fail(res, reasonValidation.code!, reasonValidation.msg!);
   }
 
-  // 更新审批状态为 returned
-  ApplicationModel.updateApprovalStatus(id, 'returned');
+  // 更新审批状态为 returned（乐观锁）
+  const updatedReturn = ApplicationModel.updateApprovalStatus(id, 'returned', app.version);
+  if (!updatedReturn) {
+    return fail(res, 40010, '该申请已被其他用户处理，请刷新后重试');
+  }
 
   // 记录审批操作（只写）
   ApprovalRecordModel.create({
@@ -234,8 +240,11 @@ router.post('/:id/reject', (req: Request, res: Response) => {
     return fail(res, reasonValidation.code!, reasonValidation.msg!);
   }
 
-  // 更新审批状态为 rejected（终态）
-  ApplicationModel.updateApprovalStatus(id, 'rejected');
+  // 更新审批状态为 rejected（终态）（乐观锁）
+  const updatedReject = ApplicationModel.updateApprovalStatus(id, 'rejected', app.version);
+  if (!updatedReject) {
+    return fail(res, 40010, '该申请已被其他用户处理，请刷新后重试');
+  }
 
   // 记录审批操作（只写）
   ApprovalRecordModel.create({
