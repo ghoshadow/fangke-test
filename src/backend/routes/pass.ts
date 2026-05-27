@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { VisitorPassModel } from '../models/visitor-pass';
 import { ApplicationModel } from '../models/application';
+import { getDatabase } from '../config';
 import { success, paginated, fail } from '../middleware/response';
 
 const router = Router();
@@ -11,16 +12,46 @@ router.get('/', (req: Request, res: Response) => {
   const pageNum = page ? Number(page) : 1;
   const pageSizeNum = page_size ? Number(page_size) : 20;
 
-  // 如果有搜索关键词，使用搜索方法
+  // 如果有搜索关键词，使用搜索方法（已 JOIN application 表）
   if (name || phone || id_card) {
     const keyword = (name as string) || (phone as string) || (id_card as string) || '';
     const result = VisitorPassModel.search(keyword, pageNum, pageSizeNum);
     return paginated(res, result);
   }
 
-  // 否则返回全量分页
-  const result = VisitorPassModel.query({ page: pageNum, page_size: pageSizeNum });
-  return paginated(res, result);
+  // 否则返回全量分页（JOIN application 表获取访客信息）
+  const db = getDatabase();
+  const offset = (pageNum - 1) * pageSizeNum;
+
+  const countResult = db.exec('SELECT COUNT(*) FROM visitor_pass');
+  const total = (countResult[0]?.values[0]?.[0] as number) || 0;
+
+  const sql = `SELECT vp.id, vp.application_id, vp.pass_status, vp.actual_visit_time, vp.created_at,
+              va.visitor_name, va.phone, va.visit_start_time, va.visit_end_time
+       FROM visitor_pass vp
+       JOIN visitor_application va ON vp.application_id = va.id
+       ORDER BY vp.created_at DESC
+       LIMIT ? OFFSET ?`;
+
+  const result = db.exec(sql, [pageSizeNum, offset]);
+  const items = result.length
+    ? result[0].values.map((row: unknown[]) => {
+        const r = row as (string | null)[];
+        return {
+          id: r[0] as string,
+          application_id: r[1] as string,
+          pass_status: r[2] as string,
+          actual_visit_time: r[3] as string | null,
+          created_at: r[4] as string,
+          visitor_name: r[5] as string,
+          phone: r[6] as string,
+          visit_start_time: r[7] as string,
+          visit_end_time: r[8] as string,
+        };
+      })
+    : [];
+
+  return paginated(res, { items, total, page: pageNum, page_size: pageSizeNum });
 });
 
 /** GET /api/passes/:id — 通行证详情 */

@@ -825,13 +825,13 @@ a:hover {
 }
 
 .status-not_visited {
-  background: #fff7e6;
-  color: #d46b08;
+  background: #f6ffed;
+  color: #389e0d;
 }
 
 .status-visited {
-  background: #f6ffed;
-  color: #389e0d;
+  background: #f5f5f5;
+  color: #8c8c8c;
 }
 
 /* ---------- 审批时间线 ---------- */
