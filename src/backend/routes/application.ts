@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { ApplicationModel } from '../models/application';
 import { DraftModel } from '../models/draft';
+import { ApprovalRecordModel } from '../models/approval-record';
 import { validateApplication, getFirstError } from '../validators/application';
 import { success, paginated, fail } from '../middleware/response';
 import type { CreateApplicationInput, ApprovalStatusType } from '../../shared/types';
@@ -46,6 +47,20 @@ router.post('/', (req: Request, res: Response) => {
   DraftModel.deleteBySessionAndApplication(body.session_id, null);
 
   return success(res, app);
+});
+
+/** GET /api/applications/:id/return-reason — 获取退回原因 */
+router.get('/:id/return-reason', (req: Request, res: Response) => {
+  const app = ApplicationModel.findById(req.params.id);
+  if (!app) {
+    return fail(res, 40404, '申请不存在', 404);
+  }
+
+  const records = ApprovalRecordModel.findByApplicationId(req.params.id);
+  // 查找最近一条退回记录
+  const returnRecord = records.reverse().find((r) => r.operation_type === 'return');
+
+  return success(res, { reason: returnRecord?.reason || null });
 });
 
 /** GET /api/applications/:id — 获取申请详情 */
