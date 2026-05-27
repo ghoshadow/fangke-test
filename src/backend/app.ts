@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Express } from 'express';
 import cors from 'cors';
 import { initDatabase } from './config';
 import { errorHandler } from './middleware/response';
@@ -9,10 +9,12 @@ import recordRoutes from './routes/record';
 import draftRoutes from './routes/draft';
 import departmentRoutes from './routes/department';
 
+export { initDatabase } from './config';
+
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 
 // 创建并配置 Express 应用（不启动监听，便于测试导入）
-export function createApp() {
+export function createApp(): Express {
   const app = express();
 
   // 中间件
@@ -37,9 +39,6 @@ export function createApp() {
 
   return app;
 }
-
-// 供测试文件导入
-export { initDatabase };
 
 // 仅在直接运行时启动监听（被 vitest 导入时不启动）
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
