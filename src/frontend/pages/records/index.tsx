@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api-client';
 import { useToast } from '../../components/toast';
@@ -36,35 +36,102 @@ const PASS_STATUS_OPTIONS = [
   { label: '已到访', value: 'visited' },
 ];
 
-const TABLE_COLUMNS: Column<VisitorApplication>[] = [
-  { key: 'visitor_name', title: '访客姓名', width: 100 },
-  { key: 'phone', title: '手机号', width: 130 },
-  { key: 'company', title: '访客单位', width: 160,
-    render: (v) => (v as string) || '-',
-  },
-  { key: 'contact_person', title: '内部对接人', width: 100 },
-  { key: 'approval_status', title: '审批状态', width: 90,
-    render: (v) => {
-      const s = v as string;
-      return <span className={`status-tag status-${s}`}>{ApprovalStatusLabels[s as keyof typeof ApprovalStatusLabels] || s}</span>;
+const PAGE_SIZE = 20;
+
+function truncateText(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  return text.slice(0, maxLen) + '...';
+}
+
+function buildColumns(
+  deptMap: Map<string, string>,
+  onViewDetail: (id: string) => void,
+): Column<VisitorApplication>[] {
+  return [
+    { key: 'visitor_name', title: '访客姓名', width: 100 },
+    { key: 'phone', title: '手机号', width: 130 },
+    {
+      key: 'contact_person' as keyof VisitorApplication,
+      title: '对接人/部门',
+      width: 140,
+      render: (_v, record) => {
+        const deptName = deptMap.get(record.department_id) || record.department_id;
+        return `${record.contact_person} / ${deptName}`;
+      },
     },
-  },
-  { key: 'pass_status', title: '通行状态', width: 90,
-    render: (v) => {
-      const s = v as string | null;
-      if (!s) return <span className="status-tag">-</span>;
-      return <span className={`status-tag status-${s}`}>{PassStatusLabels[s as keyof typeof PassStatusLabels] || s}</span>;
+    {
+      key: 'visit_start_time' as keyof VisitorApplication,
+      title: '拜访时间',
+      width: 200,
+      render: (_v, record) => `${record.visit_start_time} ~ ${record.visit_end_time}`,
     },
-  },
-  {
-    key: 'visit_start_time', title: '拜访时间', width: 160,
-    render: (_v, record) => {
-      const start = record.visit_start_time || '';
-      const end = record.visit_end_time || '';
-      return `${start} ~ ${end}`;
+    {
+      key: 'visitor_count',
+      title: '访客人数',
+      width: 80,
+      render: (v) => `${v as number} 人`,
     },
-  },
-];
+    {
+      key: 'license_plate',
+      title: '车牌号',
+      width: 100,
+      render: (v) => (v as string) || '-',
+    },
+    {
+      key: 'visit_purpose',
+      title: '到访事宜',
+      width: 160,
+      render: (v) => {
+        const text = (v as string) || '';
+        if (text.length <= 15) return text;
+        return <span title={text}>{truncateText(text, 15)}</span>;
+      },
+    },
+    {
+      key: 'approval_status',
+      title: '审批状态',
+      width: 90,
+      render: (v) => {
+        const s = v as string;
+        return (
+          <span className={`status-tag status-${s}`}>
+            {ApprovalStatusLabels[s as keyof typeof ApprovalStatusLabels] || s}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'pass_status',
+      title: '通行状态',
+      width: 90,
+      render: (v) => {
+        const s = v as string | null;
+        if (!s) return <span className="status-tag">-</span>;
+        return (
+          <span className={`status-tag status-${s}`}>
+            {PassStatusLabels[s as keyof typeof PassStatusLabels] || s}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'id' as keyof VisitorApplication,
+      title: '操作',
+      width: 100,
+      render: (_v, record) => (
+        <button
+          className="btn btn-link btn-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onViewDetail(record.id);
+          }}
+        >
+          查看详情
+        </button>
+      ),
+    },
+  ];
+}
 
 const RecordList: React.FC = () => {
   const navigate = useNavigate();
@@ -73,24 +140,27 @@ const RecordList: React.FC = () => {
   const [filterOpen, setFilterOpen] = useState(true);
   const [filterValues, setFilterValues] = useState<FilterValues>({ ...DEFAULT_VALUES });
   const [departments, setDepartments] = useState<{ label: string; value: string }[]>([]);
+  const [deptMap, setDeptMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<PaginatedData<VisitorApplication> | null>(null);
   const [page, setPage] = useState(1);
+  const [hasSearched, setHasSearched] = useState(false);
+  const searchRef = useRef(filterValues);
 
-  // 加载部门列表
   useEffect(() => {
     api.get<Department[]>('/departments')
-      .then((list) => setDepartments(list.map((d) => ({ label: d.name, value: d.id }))))
+      .then((list) => {
+        setDepartments(list.map((d) => ({ label: d.name, value: d.id })));
+        const map = new Map<string, string>();
+        list.forEach((d) => map.set(d.id, d.name));
+        setDeptMap(map);
+      })
       .catch(() => { /* 部门加载失败不影响主功能 */ });
   }, []);
 
-  // 初始加载
-  useEffect(() => {
-    fetchRecords(filterValues, 1);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const fetchRecords = useCallback(async (values: FilterValues, pageNum: number) => {
     setLoading(true);
+    searchRef.current = values;
     try {
       const params: Record<string, string | number | undefined> = {
         name: values.visitor_name || undefined,
@@ -105,7 +175,7 @@ const RecordList: React.FC = () => {
         approval_status: values.approval_status || undefined,
         pass_status: values.pass_status || undefined,
         page: pageNum,
-        page_size: 20,
+        page_size: PAGE_SIZE,
       };
       const result = await api.get<PaginatedData<VisitorApplication>>('/records', params);
       setData(result);
@@ -122,17 +192,24 @@ const RecordList: React.FC = () => {
   }, []);
 
   const handleSearch = useCallback(() => {
+    setHasSearched(true);
     fetchRecords(filterValues, 1);
   }, [filterValues, fetchRecords]);
 
   const handleReset = useCallback(() => {
-    setFilterValues({ ...DEFAULT_VALUES });
-    fetchRecords(DEFAULT_VALUES, 1);
+    const resetValues = { ...DEFAULT_VALUES };
+    setFilterValues(resetValues);
+    setHasSearched(true);
+    fetchRecords(resetValues, 1);
   }, [fetchRecords]);
 
   const handlePageChange = useCallback((newPage: number) => {
-    fetchRecords(filterValues, newPage);
-  }, [filterValues, fetchRecords]);
+    fetchRecords(searchRef.current, newPage);
+  }, [fetchRecords]);
+
+  const handleViewDetail = useCallback((id: string) => {
+    navigate(`/records/${id}`);
+  }, [navigate]);
 
   const filterFields = [
     { key: 'visitor_name', label: '访客姓名', type: 'text' as const, placeholder: '模糊搜索' },
@@ -147,11 +224,14 @@ const RecordList: React.FC = () => {
     { key: 'pass_status', label: '通行状态', type: 'select' as const, placeholder: '全部', options: PASS_STATUS_OPTIONS },
   ];
 
+  const columns = buildColumns(deptMap, handleViewDetail);
+
+  const emptyText = hasSearched ? '暂无查询结果' : '请设置筛选条件后查询';
+
   return (
     <div className="page">
       <h1 className="page-title">记录查询</h1>
 
-      {/* 筛选区（可折叠） */}
       <div className="filter-section">
         <div
           className={`filter-section-header ${filterOpen ? 'expanded' : ''}`}
@@ -174,17 +254,14 @@ const RecordList: React.FC = () => {
         )}
       </div>
 
-      {/* 结果列表 */}
       <Table
-        columns={TABLE_COLUMNS as unknown as Column<Record<string, unknown>>[]}
+        columns={columns as unknown as Column<Record<string, unknown>>[]}
         data={(data?.items || []) as unknown as Record<string, unknown>[]}
         rowKey="id"
         loading={loading}
-        emptyText="暂无记录"
-        onRowClick={(record) => navigate(`/records/${record.id}`)}
+        emptyText={emptyText}
       />
 
-      {/* 分页 */}
       {data && (
         <Pagination
           current={data.page}
