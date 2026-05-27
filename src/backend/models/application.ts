@@ -104,8 +104,8 @@ export const ApplicationModel = {
     if (q.department_id) { conditions.push('department_id = ?'); params.push(q.department_id); }
     if (q.approval_status) { conditions.push('approval_status = ?'); params.push(q.approval_status); }
     if (q.pass_status) { conditions.push('pass_status = ?'); params.push(q.pass_status); }
-    if (q.visit_start_from) { conditions.push('visit_start_time >= ?'); params.push(q.visit_start_from); }
-    if (q.visit_start_to) { conditions.push('visit_start_time <= ?'); params.push(q.visit_start_to); }
+    if (q.visit_start_from) { conditions.push("REPLACE(visit_start_time, 'T', ' ') >= ?"); params.push(q.visit_start_from.replace('T', ' ')); }
+    if (q.visit_start_to) { conditions.push("REPLACE(visit_start_time, 'T', ' ') <= ?"); params.push(q.visit_start_to.replace('T', ' ')); }
     if (q.created_from) { conditions.push('created_at >= ?'); params.push(q.created_from); }
     if (q.created_to) { conditions.push('created_at <= ?'); params.push(q.created_to); }
     if (q.contact_person) { conditions.push('contact_person LIKE ?'); params.push(`%${q.contact_person}%`); }

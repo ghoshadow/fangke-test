@@ -28,10 +28,12 @@ function filterApplications(
     result = result.filter((a) => a.phone === filters.phone);
   }
   if (filters.date_from) {
-    result = result.filter((a) => a.visit_start_time >= filters.date_from!);
+    const from = filters.date_from.replace('T', ' ');
+    result = result.filter((a) => a.visit_start_time.replace('T', ' ') >= from);
   }
   if (filters.date_to) {
-    result = result.filter((a) => a.visit_start_time <= filters.date_to! + ' 23:59:59');
+    const to = filters.date_to!.replace('T', ' ') + ' 23:59:59';
+    result = result.filter((a) => a.visit_start_time.replace('T', ' ') <= to);
   }
   if (filters.status) {
     result = result.filter((a) => a.approval_status === filters.status);
@@ -49,7 +51,7 @@ router.get('/pending', (req: Request, res: Response) => {
     phone: phone as string | undefined,
     approval_status: (status as ApprovalStatusType) || 'pending' as ApprovalStatusType,
     visit_start_from: date_from as string | undefined,
-    visit_start_to: date_to as string | undefined,
+    visit_start_to: date_to ? (date_to as string) + ' 23:59:59' : undefined,
     page: page ? Number(page) : undefined,
     page_size: page_size ? Number(page_size) : undefined,
   });
@@ -106,6 +108,9 @@ router.get('/processed', (req: Request, res: Response) => {
   let items = appIds
     .map((id: string) => ApplicationModel.findById(id))
     .filter(Boolean) as VisitorApplication[];
+
+  // 按创建时间倒序排列
+  items.sort((a, b) => b.created_at.localeCompare(a.created_at));
 
   // 应用筛选条件
   items = filterApplications(items, {
