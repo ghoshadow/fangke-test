@@ -357,10 +357,10 @@ const ApprovalManagement: React.FC = () => {
             placeholder={`请输入${confirm.type === 'return' ? '退回' : '拒绝'}原因`}
             value={confirm.reason}
             onChange={(e) => setConfirm((prev) => ({ ...prev, reason: e.target.value }))}
-            maxLength={200}
+            maxLength={500}
           />
           <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-            {confirm.reason.length}/200
+            {confirm.reason.length}/500
           </span>
         </div>
         {confirm.application && (
