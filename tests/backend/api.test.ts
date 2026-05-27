@@ -134,9 +134,9 @@ describe('API Routes', () => {
       expect(res.status).toBe(404);
     });
 
-    it('POST /api/approval/:id/approve approves and creates pass', async () => {
+    it('POST /api/approvals/:id/approve approves and creates pass', async () => {
       const res = await request(app)
-        .post(`/api/approval/${appId}/approve`)
+        .post(`/api/approvals/${appId}/approve`)
         .send({ operator_session_id: 'approver-session' });
 
       expect(res.status).toBe(200);
@@ -152,21 +152,21 @@ describe('API Routes', () => {
 
     it('rejects duplicate approval', async () => {
       const res = await request(app)
-        .post(`/api/approval/${appId}/reject`)
+        .post(`/api/approvals/${appId}/reject`)
         .send({ operator_session_id: 'approver-session', reason: '拒绝' });
 
       expect(res.status).toBe(400);
       expect([40010, 40011]).toContain(res.body.code);
     });
 
-    it('GET /api/approval/records/:appId returns approval records', async () => {
+    it('GET /api/approvals/records/:appId returns approval records', async () => {
       // Note: approval records are fetched via the approval route
       // We check that records exist for this application
-      const res = await request(app).get(`/api/approval/records/${appId}`);
+      const res = await request(app).get(`/api/approvals/records/${appId}`);
       // If the route doesn't exist, we just verify the approval happened
       if (res.status === 404) {
         // Route might not be implemented; check via approval list
-        const pendingRes = await request(app).get('/api/approval/pending');
+        const pendingRes = await request(app).get('/api/approvals/pending');
         expect(pendingRes.status).toBe(200);
       } else {
         expect(res.status).toBe(200);
@@ -200,7 +200,7 @@ describe('API Routes', () => {
 
       // 退回
       await request(app)
-        .post(`/api/approval/${appId}/return`)
+        .post(`/api/approvals/${appId}/return`)
         .send({ operator_session_id: 'approver-session', reason: '信息不完整' });
     });
 
@@ -223,7 +223,7 @@ describe('API Routes', () => {
         });
 
       const res = await request(app)
-        .post(`/api/approval/${createRes.body.data.id}/return`)
+        .post(`/api/approvals/${createRes.body.data.id}/return`)
         .send({ operator_session_id: 'approver-session' });
 
       expect(res.status).toBe(400);
@@ -305,7 +305,7 @@ describe('API Routes', () => {
         });
 
       await request(app)
-        .post(`/api/approval/${createRes.body.data.id}/approve`)
+        .post(`/api/approvals/${createRes.body.data.id}/approve`)
         .send({ operator_session_id: 'approver-session' });
 
       const passesRes = await request(app).get('/api/passes');
@@ -373,8 +373,8 @@ describe('API Routes', () => {
   });
 
   describe('Pending approval list', () => {
-    it('GET /api/approval/pending returns pending applications', async () => {
-      const res = await request(app).get('/api/approval/pending');
+    it('GET /api/approvals/pending returns pending applications', async () => {
+      const res = await request(app).get('/api/approvals/pending');
       expect(res.status).toBe(200);
       expect(res.body.data.items.every(
         (a: { approval_status: string }) => a.approval_status === 'pending'

@@ -314,14 +314,14 @@ describe('FK-28: API 表单校验与提交控制', () => {
 
       // 第一次审批（同意）- 使用 body 中的 operator_session_id
       const firstApproval = await request(app)
-        .post(`/api/approval/${appId}/approve`)
+        .post(`/api/approvals/${appId}/approve`)
         .send({ operator_session_id: 'fk28-approver' });
 
       expect(firstApproval.status).toBe(200);
 
       // 第二次审批（拒绝）→ 应该被阻止
       const secondApproval = await request(app)
-        .post(`/api/approval/${appId}/reject`)
+        .post(`/api/approvals/${appId}/reject`)
         .send({ operator_session_id: 'fk28-approver-2', reason: '拒绝理由' });
 
       expect(secondApproval.status).toBe(400);
@@ -343,12 +343,12 @@ describe('FK-28: API 表单校验与提交控制', () => {
 
       // 第一次审批
       await request(app)
-        .post(`/api/approval/${appId}/approve`)
+        .post(`/api/approvals/${appId}/approve`)
         .send({ operator_session_id: approverSession });
 
       // 同一审批人再次操作
       const duplicateRes = await request(app)
-        .post(`/api/approval/${appId}/approve`)
+        .post(`/api/approvals/${appId}/approve`)
         .send({ operator_session_id: approverSession });
 
       expect(duplicateRes.status).toBe(400);
@@ -393,7 +393,7 @@ describe('FK-28: API 表单校验与提交控制', () => {
 
       // 批准
       await request(app)
-        .post(`/api/approval/${appId}/approve`)
+        .post(`/api/approvals/${appId}/approve`)
         .send({ operator_session_id: 'fk28-approver-lock' });
 
       // 尝试修改已批准的申请
@@ -418,7 +418,7 @@ describe('FK-28: API 表单校验与提交控制', () => {
 
       // 拒绝
       await request(app)
-        .post(`/api/approval/${appId}/reject`)
+        .post(`/api/approvals/${appId}/reject`)
         .send({ operator_session_id: 'fk28-rejecter', reason: '不符合要求' });
 
       // 尝试修改已拒绝的申请
@@ -443,7 +443,7 @@ describe('FK-28: API 表单校验与提交控制', () => {
 
       // 退回
       await request(app)
-        .post(`/api/approval/${appId}/return`)
+        .post(`/api/approvals/${appId}/return`)
         .send({ operator_session_id: 'fk28-returner', reason: '请补充信息' });
 
       // 退回状态应该可以修改
@@ -482,7 +482,7 @@ describe('FK-28: API 表单校验与提交控制', () => {
 
       const appId = createRes.body.data.id;
 
-      const listRes = await request(app).get('/api/approval/pending');
+      const listRes = await request(app).get('/api/approvals/pending');
       expect(listRes.status).toBe(200);
 
       const found = listRes.body.data.items.find(

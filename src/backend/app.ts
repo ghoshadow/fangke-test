@@ -20,7 +20,7 @@ app.use(express.json({ limit: '10mb' }));
 
 // 路由注册
 app.use('/api/applications', applicationRoutes);
-app.use('/api/approval', approvalRoutes);
+app.use('/api/approvals', approvalRoutes);
 app.use('/api/passes', passRoutes);
 app.use('/api/records', recordRoutes);
 app.use('/api/drafts', draftRoutes);
